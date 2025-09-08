@@ -32,7 +32,7 @@ def connect_to_database():
         return db
     except FileNotFoundError:
         print("Error: credentials.json file not found")
-        print("Please create credentials.json with your MongoDB connection string")
+        print("Falling back to sample data mode...")
         return None
 
 # ===== DATA LOADING =====
@@ -58,6 +58,33 @@ def load_movie_data(db):
     
     return unified_view
 
+def load_sample_data():
+    """
+    Load sample data from CSV files for demonstration purposes
+    This allows the project to run without database access
+    """
+    try:
+        print("Loading sample data from CSV files...")
+        # Load sample datasets
+        imdb_sample = pd.read_csv('data/imdb_sample.csv')
+        metacritic_sample = pd.read_csv('data/metacritic_sample.csv')
+        
+        print(f"IMDB records loaded: {len(imdb_sample)}")
+        print(f"Metacritic records loaded: {len(metacritic_sample)}")
+        
+        # Merge the sample data
+        unified_view = pd.merge(imdb_sample, metacritic_sample, how="inner", on="title")
+        print(f"Merged records: {len(unified_view)}")
+        return unified_view
+        
+    except FileNotFoundError as e:
+        print(f"Error: Sample data files not found - {e}")
+        print("Please ensure data/imdb_sample.csv and data/metacritic_sample.csv exist")
+        return None
+    except Exception as e:
+        print(f"Error loading sample data: {e}")
+        return None
+    
 # ===== SENTIMENT ANALYSIS SETUP =====
 def setup_sentiment_model():
     """
@@ -285,13 +312,18 @@ def main():
     print("Starting Movie Sentiment Analysis")
     print("="*50)
     
-    # Connect to database
+    # Try to connect to database, fall back to sample data
     db = connect_to_database()
-    if db is None:
-        return
     
-    # Load data
-    movie_data = load_movie_data(db)
+    if db is not None:
+        # Load data from MongoDB
+        movie_data = load_movie_data(db)
+    else:
+        # Load sample data from CSV files
+        movie_data = load_sample_data()
+        if movie_data is None:
+            print("Unable to load data. Exiting.")
+            return None, None
     
     # Setup sentiment analysis
     sentiment_task = setup_sentiment_model()
